@@ -2,33 +2,24 @@
 #define TRANSPORT_H
 
 #include <stdint.h>
-#include "project_defs.h"
-
-/*
- * TRANSPORT MODULE
- * Responsibility:
- * - Send/receive raw packets over UART (HC-05 Bluetooth)
- * - Handle sync detection
- * - Handle byte streaming only (NO encryption logic)
- */
+#include <stdbool.h>
+#include "../../inc/project_defs.h"
 
 void transport_init(void);
 
-/*
- * Sends raw packet over UART (DMA preferred)
- */
-void transport_send(uint8_t *data, uint16_t len);
+/* Send full packet (transport fills headers + CRC) */
+void transport_send(uint8_t *packet, uint16_t size);
 
-/*
- * Receives raw packet into buffer
- * Returns number of bytes received
- */
-int transport_receive(uint8_t *buffer, uint16_t len);
+/* RX processing (must be called continuously) */
+void transport_process_rx(void);
 
-/*
- * Searches for sync byte in incoming stream
- * Returns index or -1 if not found
- */
+/* Check if packet ready */
+int transport_packet_received(void);
+
+/* Get received packet */
+int transport_receive(uint8_t *packet, uint16_t size);
+
+/* Sync search (utility) */
 int transport_find_sync(uint8_t *stream, uint16_t len);
 
 #endif
