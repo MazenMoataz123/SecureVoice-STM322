@@ -34,6 +34,8 @@ uint16_t SysHealth_CalculateCRC(uint8_t *data, uint16_t len)
     for (uint16_t i = 0; i < len; i++)
     {
         crc ^= data[i];    
+        
+
     }
     return crc;
 }

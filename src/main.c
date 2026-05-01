@@ -7,6 +7,9 @@
 SecurePacket_t TX_packet;
 SecurePacket_t RX_packet;
 
+
+
+int main() {
 time_init();
 audio_init();
 crypto_init();
@@ -26,7 +29,7 @@ while(1) {
         SysHealth_MarkTaskEnd(TASK_AUDIO);
 
         SysHealth_MarkTaskStart(TASK_CRYPTO);
-        encrypt_packet(*TX_packet.payload);     //this is only looking at the payload, the rest of the packet is not encryped bcs crc and word sync cant be encrypted otherswise the packet will be rejected by the receiver, so only the payload is encrypted, while the rest of the packet is completed in the transport layer such as the packet num etc
+        encrypt_packet((uint8_t *)TX_packet.payload);     //this is only looking at the payload, the rest of the packet is not encryped bcs crc and word sync cant be encrypted otherswise the packet will be rejected by the receiver, so only the payload is encrypted, while the rest of the packet is completed in the transport layer such as the packet num etc
         SysHealth_MarkTaskEnd(TASK_CRYPTO);
 
         SysHealth_MarkTaskStart(TASK_TRANSPORT_TX);
@@ -41,7 +44,7 @@ while(1) {
 
         
         SysHealth_MarkTaskStart(TASK_CRYPTO);
-        decrypt_packet(*RX_packet);
+        decrypt_packet((uint8_t *)RX_packet.payload);
         SysHealth_MarkTaskEnd(TASK_CRYPTO);
 
         SysHealth_MarkTaskStart(TASK_PLAYBACK);
@@ -52,4 +55,4 @@ while(1) {
 
 
 
-
+}//main ending
