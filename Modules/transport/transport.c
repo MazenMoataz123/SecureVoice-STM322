@@ -1,145 +1,177 @@
 #include "transport.h"
 #include <string.h>
 
-// ===== INTERNAL STATE =====
+/* ===================== CONFIG ===================== */
+
+extern UART_HandleTypeDef huart1;   // Provided by STM32 HAL
+
+#define RX_BUFFER_SIZE 256
+
+
+/* ===================== INTERNAL STATE ===================== */
+
 static uint16_t packet_counter = 0;
 
-static uint8_t rx_stream_buffer[256];
+static uint8_t rx_buffer[RX_BUFFER_SIZE];
 static uint16_t rx_index = 0;
 
-static int packet_ready = 0;
-static SecurePacket_t rx_packet_internal;
-static uint8_t virtual_wire[1024];
-static int write_idx = 0;
-static int read_idx = 0;
+static SecurePacket_t rx_packet;
+static volatile int packet_ready = 0;
 
 
-// ===== MOCK UART (REPLACE WITH HAL) =====
-void uart_send_bytes(uint8_t *data, uint16_t len) {
-    for (int i = 0; i < len; i++) {
-        virtual_wire[write_idx++] = data[i];
-    }
-}
+/* ===================== CRC FUNCTION ===================== */
 
-int uart_receive_byte(uint8_t *byte) {
-    if (read_idx < write_idx) {
-        *byte = virtual_wire[read_idx++];
-        return 1;
-    }
-    return 0;
-}
-
-
-// ===== CRC (simple example, replace with your SysHealth if needed) =====
-static uint16_t calculate_crc(uint8_t *data, uint16_t len) {
+static uint16_t transport_calculate_crc(uint8_t *data, uint16_t len)
+{
     uint16_t crc = 0xFFFF;
 
-    for (int i = 0; i < len; i++) {
+    for (uint16_t i = 0; i < len; i++) {
         crc ^= data[i];
-        for (int j = 0; j < 8; j++) {
-            if (crc & 1) crc = (crc >> 1) ^ 0xA001;
-            else crc >>= 1;
+
+        for (uint8_t j = 0; j < 8; j++) {
+            if (crc & 1)
+                crc = (crc >> 1) ^ 0xA001;
+            else
+                crc >>= 1;
         }
     }
+
     return crc;
 }
 
 
-// ===== INIT =====
-void transport_init(void) {
+/* ===================== INIT ===================== */
+
+void transport_init(void)
+{
     packet_counter = 0;
     rx_index = 0;
     packet_ready = 0;
+
+    // Start UART RX interrupt (1 byte at a time)
+    static uint8_t rx_byte;
+    HAL_UART_Receive_IT(&huart1, &rx_byte, 1);
 }
 
 
-// ===== SEND =====
-void transport_send(SecurePacket_t *packet) {
+/* ===================== TRANSMIT ===================== */
 
+void transport_send(SecurePacket_t *packet)
+{
     // Fill header
     packet->sync_byte = SYNC_WORD;
     packet->packet_id = packet_counter++;
     packet->flags = 0x00;
 
     // Compute CRC (exclude sync + crc field)
-    packet->crc16 = calculate_crc(
+    packet->crc16 = transport_calculate_crc(
         (uint8_t *)&packet->packet_id,
         sizeof(SecurePacket_t) - 1 - 2
     );
 
-    // Send via UART
-    uart_send_bytes((uint8_t *)packet, sizeof(SecurePacket_t));
+    // Send packet via UART (blocking or DMA)
+    HAL_UART_Transmit(&huart1, (uint8_t *)packet, sizeof(SecurePacket_t), HAL_MAX_DELAY);
 }
 
 
-// ===== RECEIVE STREAM PROCESSING =====
-static void process_incoming_byte(uint8_t byte) {
+/* ===================== SYNC SEARCH ===================== */
 
-    rx_stream_buffer[rx_index++] = byte;
+int transport_find_sync(uint8_t *stream, uint16_t len)
+{
+    for (uint16_t i = 0; i < len; i++) {
+        if (stream[i] == SYNC_WORD) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+
+/* ===================== INTERNAL PARSER ===================== */
+
+static void transport_process_byte(uint8_t byte)
+{
+    rx_buffer[rx_index++] = byte;
 
     // Prevent overflow
-    if (rx_index >= sizeof(rx_stream_buffer)) {
+    if (rx_index >= RX_BUFFER_SIZE)
         rx_index = 0;
-    }
 
-    // Try to detect packet
-    for (int i = 0; i < rx_index; i++) {
+    // Try to find sync
+    int sync_pos = transport_find_sync(rx_buffer, rx_index);
 
-        if (rx_stream_buffer[i] == SYNC_WORD) {
+    if (sync_pos >= 0) {
 
-            if ((rx_index - i) >= sizeof(SecurePacket_t)) {
+        // Check if full packet available
+        if ((rx_index - sync_pos) >= sizeof(SecurePacket_t)) {
 
-                memcpy(&rx_packet_internal,
-                       &rx_stream_buffer[i],
-                       sizeof(SecurePacket_t));
+            memcpy(&rx_packet,
+                   &rx_buffer[sync_pos],
+                   sizeof(SecurePacket_t));
 
-                // Validate CRC
-                uint16_t crc = calculate_crc(
-                    (uint8_t *)&rx_packet_internal.packet_id,
-                    sizeof(SecurePacket_t) - 1 - 2
-                );
+            // Validate CRC
+            uint16_t crc = transport_calculate_crc(
+                (uint8_t *)&rx_packet.packet_id,
+                sizeof(SecurePacket_t) - 1 - 2
+            );
 
-                if (crc == rx_packet_internal.crc16) {
-                    packet_ready = 1;
-                }
-
-                // Shift buffer
-                memmove(rx_stream_buffer,
-                        &rx_stream_buffer[i + sizeof(SecurePacket_t)],
-                        rx_index - (i + sizeof(SecurePacket_t)));
-
-                rx_index -= (i + sizeof(SecurePacket_t));
-                return;
+            if (crc == rx_packet.crc16) {
+                packet_ready = 1;
             }
+
+            // Remove processed data from buffer
+            uint16_t remaining = rx_index - (sync_pos + sizeof(SecurePacket_t));
+
+            memmove(rx_buffer,
+                    &rx_buffer[sync_pos + sizeof(SecurePacket_t)],
+                    remaining);
+
+            rx_index = remaining;
         }
     }
 }
 
 
-// ===== RECEIVE API =====
-int transport_receive(SecurePacket_t *packet) {
+/* ===================== UART RX CALLBACK ===================== */
 
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance == USART1) {
+
+        static uint8_t rx_byte;
+
+        // Process received byte
+        transport_process_byte(rx_byte);
+
+        // Restart reception
+        HAL_UART_Receive_IT(&huart1, &rx_byte, 1);
+    }
+}
+
+
+/* ===================== RX API ===================== */
+
+int transport_packet_received(void)
+{
+    return packet_ready;
+}
+
+
+int transport_receive(SecurePacket_t *packet)
+{
     if (!packet_ready)
         return 0;
 
-    memcpy(packet, &rx_packet_internal, sizeof(SecurePacket_t));
+    memcpy(packet, &rx_packet, sizeof(SecurePacket_t));
     packet_ready = 0;
 
     return 1;
 }
 
 
-// ===== CHECK IF PACKET READY =====
-int transport_packet_received(void) {
-    return packet_ready;
-}
+/* ===================== OPTIONAL POLLING ===================== */
 
-
-// ===== POLLING FUNCTION (CALL FREQUENTLY) =====
-void transport_process_rx(void) {
-    uint8_t byte;
-
-    while (uart_receive_byte(&byte)) {
-        process_incoming_byte(byte);
-    }
+void transport_process_rx(void)
+{
+    // Not needed if using interrupt mode
 }
