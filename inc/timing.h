@@ -12,4 +12,15 @@
 // Timing constraints (VERY IMPORTANT for STM32 real-time behavior)
 #define FRAME_PERIOD_US       20000  // 20ms
 
+//========TIMING CONTROL============
+void time_init(void);
+
+/* called every 1ms from SysTick */
+void time_tick(void);
+
+/* check if 20ms frame is ready */
+int time_frame_ready(void);
+
+/* clear the flag after processing */
+void time_clear_frame_flag(void);
 #endif
