@@ -16,6 +16,15 @@ typedef enum {
     STATE_ERROR_HALT    //3
 } SystemState_t;    //to help with system serial communication insteaf of just numbers
 
+typedef enum {
+    TASK_AUDIO = 0,
+    TASK_CRYPTO = 1,
+    TASK_TRANSPORT_TX = 2,
+    TASK_TRANSPORT_RX = 3,
+    TASK_SYSTEM = 4
+    TASK_PLAYBACK = 5
+} TaskID_t; //in the scope of one 20ms window, there is only 1 of each task so there is no reaoson for actually numbering 
+
 
 typedef struct __attribute__((packed)) {
     uint8_t  sync_byte;
@@ -26,6 +35,9 @@ typedef struct __attribute__((packed)) {
 } SecurePacket_t;   //defines and ensures packets are sent back to back without any tampering in other layers
 #define PACKET_SIZE sizeof(SecurePacket_t)
 _Static_assert(sizeof(SecurePacket_t) == 166, "Packet size mismatch");
+
+
+
 
 
 #endif

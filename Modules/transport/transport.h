@@ -2,33 +2,34 @@
 #define TRANSPORT_H
 
 #include <stdint.h>
-#include "project_defs.h"
+#include <stdbool.h>
+#include "../../inc/project_defs.h"
 
-/*
- * TRANSPORT MODULE
- * Responsibility:
- * - Send/receive raw packets over UART (HC-05 Bluetooth)
- * - Handle sync detection
- * - Handle byte streaming only (NO encryption logic)
- */
+/* ===================== FLAGS ===================== */
+
+#define FLAG_DATA   0x01
+#define FLAG_ACK    0x02
+#define FLAG_HELLO  0x04
+
+
+/* ===================== API ===================== */
 
 void transport_init(void);
 
-/*
- * Sends raw packet over UART (DMA preferred)
- */
-void transport_send(uint8_t *data, uint16_t len);
+/* Send DATA packet (with retry + ACK) */
+int transport_send(SecurePacket_t *packet);
 
-/*
- * Receives raw packet into buffer
- * Returns number of bytes received
- */
-int transport_receive(uint8_t *buffer, uint16_t len);
+/* Receive handling */
+int transport_packet_received(void);
+int transport_receive(SecurePacket_t *packet);
 
-/*
- * Searches for sync byte in incoming stream
- * Returns index or -1 if not found
- */
+/* Handshake (call once at startup) */
+int transport_handshake(void);
+
+/* RX processing (called in interrupt or loop if needed) */
+void transport_process_rx(void);
+
+/* Sync finder */
 int transport_find_sync(uint8_t *stream, uint16_t len);
 
 #endif
