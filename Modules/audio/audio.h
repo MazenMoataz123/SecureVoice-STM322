@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include "project_defs.h"
-#include "config.h"
+#include "system_config.h"
 
 /*
  * AUDIO MODULE
