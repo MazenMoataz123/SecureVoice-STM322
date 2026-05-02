@@ -1,4 +1,4 @@
-#ifndef PROJECT_DEFS_H  #preventing the file being included mutiple times
+#ifndef PROJECT_DEFS_H 
 #define PROJECT_DEFS_H  
 
 #include <stdint.h>
@@ -21,7 +21,7 @@ typedef enum {
     TASK_CRYPTO = 1,
     TASK_TRANSPORT_TX = 2,
     TASK_TRANSPORT_RX = 3,
-    TASK_SYSTEM = 4
+    TASK_SYSTEM = 4,
     TASK_PLAYBACK = 5
 } TaskID_t; //in the scope of one 20ms window, there is only 1 of each task so there is no reaoson for actually numbering 
 

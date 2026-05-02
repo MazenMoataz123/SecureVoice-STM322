@@ -1,7 +1,7 @@
 
 
 #include <stdio.h>
-#include "timing.c"
+#include "timing.h"
 #include "project_defs.h"
 
 SecurePacket_t TX_packet;
