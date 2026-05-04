@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 #include "project_defs.h"
-#include "system_config.h"
 
 /*
  * AUDIO MODULE
@@ -23,6 +22,7 @@ void audio_init(void);      //i personally beleive a ping pong buffer is much sa
  */
 void audio_get_frame(uint8_t *buffer);
 
+void play_audio(uint8_t *payload);
 /*
  * Optional debug hook:
  * Returns 1 if audio source is healthy, 0 otherwise

@@ -1,6 +1,15 @@
 #include <stdint.h>
+#include "audio.h"
+#include "project_defs.h"
 
 #define AUDIO_PAYLOAD_SIZE 160
+
+
+void audio_init(void) {
+
+    
+    // Placeholder for hardware setup
+}
 
 uint8_t linear_to_ulaw(int16_t sample)
 {
@@ -58,3 +67,9 @@ void audio_get_frame(uint8_t *payload)
     }
 }
 
+
+
+void play_audio(uint8_t *payload) {
+    // Leave this empty for now
+    (void)payload;
+}

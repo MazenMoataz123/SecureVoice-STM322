@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "../../inc/project_defs.h"
+#include "project_defs.h"
 
 /* ===================== FLAGS ===================== */
 

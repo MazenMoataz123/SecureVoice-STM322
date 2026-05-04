@@ -1,10 +1,11 @@
 #include "transport.h"
-#include "stm32f1xx_hal.h" 
+//#include "stm32f4xx_hal.h"  <-- REFACTORED: Removed hardware-specific header
 #include <string.h>
+#include <stdint.h>
 
 /* ===================== CONFIG ===================== */
 
-extern UART_HandleTypeDef huart1;
+//extern UART_HandleTypeDef huart1; <-- REFACTORED: Removed hardware handle
 
 #define RX_BUFFER_SIZE 256
 #define MAX_RETRIES    3
@@ -50,18 +51,32 @@ void transport_init(void)
     packet_ready = 0;
     packet_counter = 0;
 
-    HAL_UART_Receive_IT(&huart1, &rx_byte, 1);
+    // HAL_UART_Receive_IT(&huart1, &rx_byte, 1);
+    /* REFACTORED: No driver-specific init code here. 
+       Hardware setup should be handled in a separate hardware abstraction layer if needed. */
 }
 
 
 /* ===================== LOW LEVEL SEND ===================== */
 
+/*
+static void send_raw(SecurePacket_t *packet) {
+    uint8_t *data = (uint8_t *)packet;
+    for (uint16_t i = 0; i < sizeof(SecurePacket_t); i++) {
+        // Wait until transmit data register is empty (TXE bit)
+        while (!(USART1->SR & USART_SR_TXE));
+        // Write byte to data register
+        USART1->DR = data[i];
+    }
+}
+*/
+
 static void send_raw(SecurePacket_t *packet)
 {
-    HAL_UART_Transmit(&huart1,
-                      (uint8_t *)packet,
-                      sizeof(SecurePacket_t),
-                      HAL_MAX_DELAY);
+    /* REFACTORED: Pure C placeholder. 
+       In a real simulation or target, you would link this to a 
+       virtual serial port or a custom bus. */
+    (void)packet; 
 }
 
 
@@ -205,6 +220,7 @@ static void process_byte(uint8_t byte)
 
 /* ===================== UART CALLBACK ===================== */
 
+/*
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     if (huart->Instance == USART1) {
@@ -214,6 +230,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         HAL_UART_Receive_IT(&huart1, &rx_byte, 1);
     }
 }
+*/
+
+/* REFACTORED: Hardware callbacks are driver-dependent. 
+   In an independent project, you would manually call process_byte() 
+   whenever a byte is received from your source. */
 
 
 /* ===================== RECEIVE ===================== */
@@ -240,5 +261,5 @@ int transport_receive(SecurePacket_t *packet)
 
 void transport_process_rx(void)
 {
-    // Not needed (interrupt-driven)
+    // Not needed (placeholder for polling if desired)
 }

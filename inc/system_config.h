@@ -11,3 +11,5 @@
 
 #define UART_BAUDRATE      115200
 #define USE_DMA            1        // 1 = enabled, 0 = disabled
+
+#endif // CONFIG_H
